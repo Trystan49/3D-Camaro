@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=Racing+Sans+One&display=swap"
       rel="stylesheet"
     />
-    <link rel="icon" href="../src/public/chevrolet-512.png" />
+    <link rel="icon" href="../threejs-master/src/public/chevrolet-512.png" />
 
     <style>
       body {
@@ -91,16 +91,15 @@
     <div id="d">
       <div id="buttons_cars" class="bwrap">
         <h1 id="camaro">Chevrolet Camaro SS - 1968</h1>
-		<img class="logo" src="../src/public/chevrolet-512.png"></img>
+		<img class="logo" src="../threejs-master/src/public/chevrolet-512.png"></img>
       </div>
 
       <div id="buttons_materials" class="bwrap"></div>
     </div>
 
-    <script src="../build/three.min.js"></script>
-
-    <script src="js/Detector.js"></script>
-    <script src="js/libs/stats.min.js"></script>
+    <script src="../threejs-master/build/three.min.js"></script>
+    <script src="../threejs-master/examples/js/Detector.js"></script>
+    <script src="../threejs-master/examples/js/libs/stats.min.js"></script>
 
     <script>
       if (!Detector.webgl) Detector.addGetWebGLMessage();
@@ -110,7 +109,7 @@
       var CARS = {
         camaro: {
           name: "Chevrolet Camaro",
-          url: "obj/camaro/CamaroNoUv_bin.js",
+          url: "../threejs-master/examples/obj/camaro/CamaroNoUv_bin.js",
           author:
             '<a href="http://www.turbosquid.com/3d-models/blender-camaro/411348" target="_blank">dskfnwn</a>',
           init_rotation: [0.0, 0.0, 0.0 /*0, 1, 0*/],
