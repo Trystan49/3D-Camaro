@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Camaro SS - 3D</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Racing+Sans+One&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="../src/public/chevrolet-512.png" />
+
+    <style>
+      body {
+        background: rgb(255, 255, 255);
+        color: #fff;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        font-family: georgia;
+        text-align: center;
+      }
+      h1 {
+        font-family: "Racing Sans One", cursive;
+      }
+	  .logo {
+		margin-top: -35px;
+		width: 70px
+	  }
+      a {
+        color: skyblue;
+        text-decoration: none;
+      }
+      canvas {
+        pointer-events: none;
+        z-index: 10;
+        position: relative;
+      }
+
+      #d {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        margin: 1em 0 -4.5em 0;
+        z-index: 1000;
+      }
+
+      .bwrap {
+        margin: -10px 0 0 0;
+      }
+      button {
+        font-family: "Racing Sans One", cursive;
+        border: 0;
+        background: rgb(255, 255, 255);
+        color: rgb(0, 0, 0);
+        padding: 0.5em 1em;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      button:hover {
+        background: rgb(145, 144, 144);
+      }
+      #buttons_cars button {
+        color: #fa0;
+      }
+
+      #car_info {
+        text-align: center;
+      }
+      #car_name {
+        font-size: 1em;
+      }
+      #car_author {
+        font-size: 1em;
+      }
+
+      #oldie {
+        background: rgb(50, 0, 0) !important;
+        color: #fff !important;
+        margin-top: 7em !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="d">
+      <div id="buttons_cars" class="bwrap">
+        <h1 id="camaro">Chevrolet Camaro SS - 1968</h1>
+		<img class="logo" src="../src/public/chevrolet-512.png"></img>
+      </div>
+
+      <div id="buttons_materials" class="bwrap"></div>
+    </div>
+
+    <script src="../build/three.min.js"></script>
+
+    <script src="js/Detector.js"></script>
+    <script src="js/libs/stats.min.js"></script>
+
+    <script>
+      if (!Detector.webgl) Detector.addGetWebGLMessage();
+
+      var STATS_ENABLED = false;
+
+      var CARS = {
+        camaro: {
+          name: "Chevrolet Camaro",
+          url: "obj/camaro/CamaroNoUv_bin.js",
+          author:
+            '<a href="http://www.turbosquid.com/3d-models/blender-camaro/411348" target="_blank">dskfnwn</a>',
+          init_rotation: [0.0, 0.0, 0.0 /*0, 1, 0*/],
+          scale: 75,
+          init_material: 0,
+          body_materials: [0],
+
+          object: null,
+          buttons: null,
+          materials: null,
+        },
+      };
+
+      var container, stats;
+
+      var camera, scene, renderer;
+      var cameraCube, sceneCube;
+
+      var m, mi;
+
+      var directionalLight, pointLight;
+
+      var mouseX = 0,
+        mouseY = 0;
+
+      var windowHalfX = window.innerWidth / 2;
+      var windowHalfY = window.innerHeight / 2;
+
+      var loader = new THREE.BinaryLoader(true);
+      document.body.appendChild(loader.statusDomElement);
+
+      init();
+      animate();
+
+      function init() {
+        container = document.createElement("div");
+        document.body.appendChild(container);
+
+        // CAMERAS
+
+        camera = new THREE.PerspectiveCamera(
+          85,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+        cameraCube = new THREE.PerspectiveCamera(
+          85,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+
+        // SCENE
+
+        scene = new THREE.Scene();
+        sceneCube = new THREE.Scene();
+
+        // LIGHTS
+
+        var ambient = new THREE.AmbientLight(0x050505);
+        scene.add(ambient);
+
+        directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+        directionalLight.position.set(2, 1.2, 10).normalize();
+        scene.add(directionalLight);
+
+        directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(-2, 1.2, -10).normalize();
+        scene.add(directionalLight);
+
+        pointLight = new THREE.PointLight(0xffaa00, 2);
+        pointLight.position.set(2000, 1200, 10000);
+        scene.add(pointLight);
+
+        // Skybox
+
+        var shader = THREE.ShaderUtils.lib["cube"];
+        shader.uniforms["tCube"].value = textureCube;
+
+        var material = new THREE.ShaderMaterial({
+            fragmentShader: shader.fragmentShader,
+            vertexShader: shader.vertexShader,
+            uniforms: shader.uniforms,
+            depthWrite: false,
+            side: THREE.BackSide,
+          }),
+          mesh = new THREE.Mesh(
+            new THREE.CubeGeometry(100, 100, 100),
+            material
+          );
+        sceneCube.add(mesh);
+
+        //
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setFaceCulling(0);
+        renderer.autoClear = false;
+
+        container.appendChild(renderer.domElement);
+
+        if (STATS_ENABLED) {
+          stats = new Stats();
+          stats.domElement.style.position = "absolute";
+          stats.domElement.style.top = "0px";
+          stats.domElement.style.zIndex = 100;
+          container.appendChild(stats.domElement);
+        }
+
+        document.addEventListener("mousemove", onDocumentMouseMove, false);
+
+        var r = "";
+
+        var textureCube = THREE.ImageUtils.loadTextureCube(r);
+        textureCube.format = THREE.RGBFormat;
+
+        // common materials
+
+        var mlib = {
+          Orange: new THREE.MeshLambertMaterial({
+            color: 0xff6600,
+            ambient: 0xff2200,
+            envMap: textureCube,
+            combine: THREE.MixOperation,
+            reflectivity: 0.3,
+          }),
+          Blue: new THREE.MeshLambertMaterial({
+            color: 0x3d85c6,
+            ambient: 0x3d85c6,
+            envMap: textureCube,
+            combine: THREE.MixOperation,
+            reflectivity: 0.3,
+          }),
+          Red: new THREE.MeshLambertMaterial({
+            color: 0x660000,
+            ambient: 0x330000,
+            envMap: textureCube,
+            combine: THREE.MixOperation,
+            reflectivity: 0.25,
+          }),
+          White: new THREE.MeshLambertMaterial({
+            color: 0xffffff,
+            ambient: 0x666666,
+            envMap: textureCube,
+            combine: THREE.MixOperation,
+            reflectivity: 0.25,
+          }),
+
+          "Pure chrome": new THREE.MeshLambertMaterial({
+            color: 0xffffff,
+            envMap: textureCube,
+          }),
+          "Dark chrome": new THREE.MeshLambertMaterial({
+            color: 0x444444,
+            envMap: textureCube,
+          }),
+          "Darker chrome": new THREE.MeshLambertMaterial({
+            color: 0x222222,
+            envMap: textureCube,
+          }),
+
+          "Black glass": new THREE.MeshLambertMaterial({
+            color: 0x101016,
+            envMap: textureCube,
+            opacity: 0.975,
+            transparent: true,
+          }),
+          "Dark glass": new THREE.MeshLambertMaterial({
+            color: 0x101046,
+            envMap: textureCube,
+            opacity: 0.25,
+            transparent: true,
+          }),
+          "Blue glass": new THREE.MeshLambertMaterial({
+            color: 0x668899,
+            envMap: textureCube,
+            opacity: 0.75,
+            transparent: true,
+          }),
+          "Light glass": new THREE.MeshBasicMaterial({
+            color: 0x223344,
+            envMap: textureCube,
+            opacity: 0.25,
+            transparent: true,
+            combine: THREE.MixOperation,
+            reflectivity: 0.25,
+          }),
+
+          "Red glass": new THREE.MeshLambertMaterial({
+            color: 0xff0000,
+            opacity: 0.75,
+            transparent: true,
+          }),
+          "Yellow glass": new THREE.MeshLambertMaterial({
+            color: 0xffffaa,
+            opacity: 0.75,
+            transparent: true,
+          }),
+          "Orange glass": new THREE.MeshLambertMaterial({
+            color: 0x995500,
+            opacity: 0.75,
+            transparent: true,
+          }),
+
+          "Orange glass 50": new THREE.MeshLambertMaterial({
+            color: 0xffbb00,
+            opacity: 0.5,
+            transparent: true,
+          }),
+          "Red glass 50": new THREE.MeshLambertMaterial({
+            color: 0xff0000,
+            opacity: 0.5,
+            transparent: true,
+          }),
+
+          "Fullblack rough": new THREE.MeshLambertMaterial({ color: 0x000000 }),
+          "Black rough": new THREE.MeshLambertMaterial({ color: 0x050505 }),
+          "Darkgray rough": new THREE.MeshLambertMaterial({ color: 0x090909 }),
+          "Red rough": new THREE.MeshLambertMaterial({ color: 0x330500 }),
+
+          "Darkgray shiny": new THREE.MeshPhongMaterial({
+            color: 0x000000,
+            specular: 0x050505,
+          }),
+          "Gray shiny": new THREE.MeshPhongMaterial({
+            color: 0x050505,
+            shininess: 20,
+          }),
+        };
+
+        // Camero materials
+
+        CARS["camaro"].materials = {
+          body: [
+            ["Orange", mlib["Orange"]],
+            ["Blue", mlib["Blue"]],
+            ["Red", mlib["Red"]],
+          ],
+        };
+
+        m = CARS["camaro"].materials;
+        mi = CARS["camaro"].init_material;
+
+        CARS["camaro"].mmap = {
+          0: m.body[mi][1], // car body
+          1: mlib["White"], // wheels chrome
+          2: mlib["Pure chrome"], // grille chrome
+          3: mlib["Dark chrome"], // door lines
+          4: mlib["Light glass"], // windshield
+          5: mlib["Gray shiny"], // interior
+          6: mlib["Black rough"], // tire
+          7: mlib["Fullblack rough"], // tireling
+          8: mlib["Fullblack rough"], // behind grille
+        };
+
+        loader.load(CARS["camaro"].url, function (geometry) {
+          createScene(geometry, "camaro");
+        });
+
+        for (var c in CARS) initCarButton(c);
+
+        //
+
+        window.addEventListener("resize", onWindowResize, false);
+      }
+
+      function onWindowResize() {
+        windowHalfX = window.innerWidth / 2;
+        windowHalfY = window.innerHeight / 2;
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        cameraCube.aspect = window.innerWidth / window.innerHeight;
+        cameraCube.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      function initCarButton(car) {
+        $(car).addEventListener(
+          "click",
+          function () {
+            if (!CARS[car].object) {
+              loader.statusDomElement.style.display = "block";
+              loader.load(CARS[car].url, function (geometry) {
+                createScene(geometry, car);
+              });
+            } else {
+              switchCar(car);
+            }
+          },
+          false
+        );
+      }
+
+      function $(id) {
+        return document.getElementById(id);
+      }
+      function button_name(car, index) {
+        return "m_" + car + "_" + index;
+      }
+
+      function switchCar(car) {
+        for (var c in CARS) {
+          if (c != car && CARS[c].object) {
+            CARS[c].object.visible = false;
+            CARS[c].buttons.style.display = "none";
+          }
+        }
+
+        CARS[car].object.visible = true;
+        CARS[car].buttons.style.display = "block";
+
+        $("car_name").innerHTML = CARS[car].name + " model";
+        $("car_author").innerHTML = CARS[car].author;
+      }
+
+      function createButtons(materials, car) {
+        var buttons,
+          i,
+          src = "";
+
+        for (i = 0; i < materials.length; i++) {
+          src +=
+            '<button id="' +
+            button_name(car, i) +
+            '">' +
+            materials[i][0] +
+            "</button> ";
+        }
+
+        buttons = document.createElement("div");
+        buttons.innerHTML = src;
+
+        $("buttons_materials").appendChild(buttons);
+
+        return buttons;
+      }
+
+      function attachButtonMaterials(
+        materials,
+        geometry,
+        material_indices,
+        car
+      ) {
+        for (var i = 0; i < materials.length; i++) {
+          $(button_name(car, i)).counter = i;
+          $(button_name(car, i)).addEventListener(
+            "click",
+            function () {
+              for (var j = 0; j < material_indices.length; j++) {
+                geometry.materials[material_indices[j]] =
+                  materials[this.counter][1];
+              }
+            },
+            false
+          );
+        }
+      }
+
+      function createScene(geometry, car) {
+        var m = new THREE.MeshFaceMaterial(),
+          s = CARS[car].scale * 1,
+          r = CARS[car].init_rotation,
+          materials = CARS[car].materials,
+          mi = CARS[car].init_material,
+          bm = CARS[car].body_materials;
+
+        for (var i in CARS[car].mmap) {
+          geometry.materials[i] = CARS[car].mmap[i];
+        }
+
+        var mesh = new THREE.Mesh(geometry, m);
+
+        mesh.rotation.x = r[0];
+        mesh.rotation.y = r[1];
+        mesh.rotation.z = r[2];
+
+        mesh.scale.x = mesh.scale.y = mesh.scale.z = s;
+
+        scene.add(mesh);
+
+        CARS[car].object = mesh;
+
+        CARS[car].buttons = createButtons(materials.body, car);
+        attachButtonMaterials(materials.body, geometry, bm, car);
+
+        switchCar(car);
+      }
+
+      function onDocumentMouseMove(event) {
+        mouseY = event.clientY - window.innerHeight;
+      }
+
+      //
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        render();
+      }
+
+      function render() {
+        var timer = -0.0002 * Date.now();
+
+        camera.position.x = 1000 * Math.cos(timer);
+        camera.position.y += (-mouseY - camera.position.y) * 0.05;
+        camera.position.z = 1000 * Math.sin(timer);
+
+        camera.lookAt(scene.position);
+        cameraCube.rotation.copy(camera.rotation);
+
+        renderer.render(sceneCube, cameraCube);
+        renderer.render(scene, camera);
+
+        if (STATS_ENABLED) stats.update();
+      }
+    </script>
+  </body>
+</html>
